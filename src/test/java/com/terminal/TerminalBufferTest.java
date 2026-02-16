@@ -288,4 +288,26 @@ class TerminalBufferTest {
         assertEquals(0, buffer.getScrollbackSize());
     }
 
+    @Test
+    void testResize() {
+        buffer.writeText("Test content");
+        buffer.resize(40, 12);
+
+        assertEquals(40, buffer.getWidth());
+        assertEquals(12, buffer.getHeight());
+    }
+
+    @Test
+    void testWideCharacters() {
+        // Wide character should occupy 2 cells
+        buffer.writeText("你");
+        assertEquals(2, buffer.getCursorCol());
+
+        // Second wide character
+        buffer.writeText("好");
+        assertEquals(4, buffer.getCursorCol());  // More precise than >=3
+
+
+    }
+
 }
