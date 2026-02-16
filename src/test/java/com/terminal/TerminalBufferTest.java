@@ -136,4 +136,156 @@ class TerminalBufferTest {
             }
         }
     }
+
+    @Test
+    void testInsertLineAtBottom() {
+        buffer.writeText("Line 1");
+        int initialSize = buffer.getScrollbackSize();
+
+        for (int i = 0; i < 30; i++) {
+            buffer.insertLineAtBottom();
+        }
+
+        // All 30 inserted lines push screen content to scrollback
+        assertTrue(buffer.getScrollbackSize() > initialSize);
+        assertEquals(30, buffer.getScrollbackSize());  // Add this line
+    }
+
+    @Test
+    void testScrollback() {
+        for (int i = 0; i < 30; i++) {
+            buffer.setCursorPosition(23, 0);
+            buffer.writeText("Line " + i);
+            buffer.insertLineAtBottom();
+        }
+
+        assertTrue(buffer.getScrollbackSize() > 0);
+        assertTrue(buffer.getScrollbackSize() <= 1000);
+        assertEquals(30,buffer.getScrollbackSize());
+    }
+    @Test
+    void testScrollbackPreservesContent() {
+        // Fill screen with numbered lines
+        for (int i = 1; i <= 24; i++) {
+            buffer.setCursorPosition(i - 1, 0);
+            buffer.writeText("Line " + i);
+        }
+
+        assertEquals(0, buffer.getScrollbackSize());
+
+        // Insert 5 lines at bottom
+        for (int i = 0; i < 5; i++) {
+            buffer.insertLineAtBottom();
+        }
+
+        // 5 lines scrolled off
+        assertEquals(5, buffer.getScrollbackSize());
+
+        // Verify scrollback content
+        assertEquals("Line 1", buffer.getLineAsString(-5).trim());
+        assertEquals("Line 2", buffer.getLineAsString(-4).trim());
+        assertEquals("Line 3", buffer.getLineAsString(-3).trim());
+        assertEquals("Line 4", buffer.getLineAsString(-2).trim());
+        assertEquals("Line 5", buffer.getLineAsString(-1).trim());
+
+        // Screen top now shows Line 6 (not Line 1)
+        assertTrue(buffer.getLineAsString(0).startsWith("Line 6"));
+
+        // Screen bottom has empty lines
+        assertTrue(buffer.getLineAsString(23).trim().isEmpty());
+    }
+
+
+
+    @Test
+    void testScrollbackLimit() {
+        TerminalBuffer smallBuffer = new TerminalBuffer(80, 24, 10);
+
+        for (int i = 0; i < 50; i++) {
+            smallBuffer.insertLineAtBottom();
+        }
+
+        assertTrue(smallBuffer.getScrollbackSize() <= 10);
+    }
+
+    @Test
+    void testGetCharAt() {
+        buffer.writeText("Test");
+
+        assertEquals('T', buffer.getCharAt(0, 0));
+        assertEquals('e', buffer.getCharAt(0, 1));
+        assertEquals('s', buffer.getCharAt(0, 2));
+        assertEquals('t', buffer.getCharAt(0, 3));
+    }
+
+    @Test
+    void testGetLineAsString() {
+        buffer.writeText("Hello World");
+        String line = buffer.getLineAsString(0);
+
+        assertTrue(line.startsWith("Hello World"));
+        assertEquals(80, line.length());
+    }
+
+    @Test
+    void testGetScreenContent() {
+        buffer.writeText("Line 1");
+        buffer.setCursorPosition(1, 0);
+        buffer.writeText("Line 2");
+
+        String content = buffer.getScreenContent();
+        String[] lines = content.split("\n");
+
+        // Should return all 24 screen rows, even if empty
+        assertEquals(24, lines.length);
+        assertTrue(lines[0].startsWith("Line 1"));
+        assertTrue(lines[1].startsWith("Line 2"));
+
+        // Row 2 should be empty (80 spaces)
+        assertEquals(80, lines[2].length());
+        assertTrue(lines[2].trim().isEmpty());
+    }
+    @Test
+    void testGetScreenContentEmpty() {
+        String content = buffer.getScreenContent();
+        String[] lines = content.split("\n");
+
+        // Even empty screen should return 24 rows
+        assertEquals(24, lines.length);
+
+        // All rows should be 80 spaces
+        for (String line : lines) {
+            assertEquals(80, line.length());
+            assertTrue(line.trim().isEmpty());
+        }
+    }
+
+    @Test
+    void testAttributes() {
+        CellAttributes.Style boldStyle = new CellAttributes.Style(true, false, false);
+        buffer.setCurrentAttributes(
+                CellAttributes.Color.RED,
+                CellAttributes.Color.BLACK,
+                boldStyle
+        );
+
+        buffer.writeText("Red");
+
+        CellAttributes attrs = buffer.getAttributesAt(0, 0);
+        assertEquals(CellAttributes.Color.RED, attrs.getForeground());
+        assertEquals(CellAttributes.Color.BLACK, attrs.getBackground());
+        assertTrue(attrs.getStyle().isBold());
+    }
+
+    @Test
+    void testClearAll() {
+        for (int i = 0; i < 30; i++) {
+            buffer.insertLineAtBottom();
+        }
+
+        assertTrue(buffer.getScrollbackSize() > 0);
+        buffer.clearAll();
+        assertEquals(0, buffer.getScrollbackSize());
+    }
+
 }
