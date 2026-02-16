@@ -163,7 +163,7 @@ public class TerminalBuffer {
     public void insertLineAtBottom() {
         screen.add(new Line(width));
         if (screen.size() > height) {
-            Line topLine = screen.removeFirst();
+            Line topLine = screen.remove(0);
             scrollback.addLast(topLine);
 
             while (scrollback.size() > maxScrollback) {
@@ -193,6 +193,7 @@ public class TerminalBuffer {
         return getCellAt(row, col).getAttributes();
     }
 
+    //helper function
     private Cell getCellAt(int row, int col) {
         if (col < 0 || col >= width) {
             return new Cell();
@@ -200,8 +201,10 @@ public class TerminalBuffer {
 
         if (row < 0) {
             int scrollbackIndex = scrollback.size() + row;
-            if (scrollbackIndex >= 0 && scrollbackIndex < scrollback.size()) {
-                return ((LinkedList<Line>) scrollback).get(scrollbackIndex).getCell(col);
+            if (scrollbackIndex >= 0) {
+                // Convert deque to list for indexed access
+                List<Line> scrollbackList = new ArrayList<>(scrollback);
+                return scrollbackList.get(scrollbackIndex).getCell(col);
             }
             return new Cell();
         } else if (row < height) {
@@ -215,7 +218,9 @@ public class TerminalBuffer {
         if (row < 0) {
             int scrollbackIndex = scrollback.size() + row;
             if (scrollbackIndex >= 0) {
-                return ((LinkedList<Line>) scrollback).get(scrollbackIndex).asString();
+                // Convert deque to list for indexed access
+                List<Line> scrollbackList = new ArrayList<>(scrollback);
+                return scrollbackList.get(scrollbackIndex).asString();
             }
             return "";
         } else if (row < height) {
