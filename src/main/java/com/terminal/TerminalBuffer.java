@@ -1,7 +1,12 @@
 package com.terminal;
 
 import java.util.*;
-
+/**
+ * Terminal text buffer - stores what's displayed on screen plus scrollback history.
+ *
+ * Works like a real terminal: you write text at the cursor, it wraps to the next
+ * line when full, and old lines scroll up into history when the screen fills.
+ */
 public class TerminalBuffer {
     private int width;
     private int height;
@@ -83,7 +88,10 @@ public class TerminalBuffer {
         cursorCol = Math.min(width - 1, cursorCol + n);
     }
 
-    //overwrite mode - replacing existing characters
+    /**
+     * Writes text at cursor position, overwriting existing content.
+     * Cursor advances with each character. Lines wrap automatically.
+     */
     public void writeText(String text) {
         if (text == null || text.isEmpty()) {
             return;
@@ -113,7 +121,10 @@ public class TerminalBuffer {
             cursorCol++;
         }
     }
-    //writing mode - writing where in blank spaces
+    /**
+     * Inserts text at cursor position, shifting existing content to the right.
+     * Content that shifts past the line end is lost.
+     */
     public void insertText(String text) {
         if (text == null || text.isEmpty()) {
             return;
@@ -203,14 +214,45 @@ public class TerminalBuffer {
     public String getLineAsString(int row) {
         if (row < 0) {
             int scrollbackIndex = scrollback.size() + row;
-            if (scrollbackIndex >= 0 && scrollbackIndex < scrollback.size())
-                return "";
+            if (scrollbackIndex >= 0) {
+                return ((LinkedList<Line>) scrollback).get(scrollbackIndex).asString();
+            }
+            return "";
         } else if (row < height) {
             return screen.get(row).asString();
         }
         return "";
     }
-        private void scrollUp() {
+
+    public String getScreenContent() {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < height; i++) {
+            sb.append(screen.get(i).asString());
+            if (i < height - 1) {
+                sb.append('\n');
+            }
+        }
+        return sb.toString();
+    }
+
+    public String getAllContent() {
+        StringBuilder sb = new StringBuilder();
+
+        for (Line line : scrollback) {
+            sb.append(line.asString()).append('\n');
+        }
+
+        for (int i = 0; i < height; i++) {
+            sb.append(screen.get(i).asString());
+            if (i < height - 1) {
+                sb.append('\n');
+            }
+        }
+
+        return sb.toString();
+    }
+
+    private void scrollUp() {
         if (!screen.isEmpty()) {
             Line topLine = screen.remove(0);
             scrollback.addLast(topLine);
@@ -222,5 +264,38 @@ public class TerminalBuffer {
             screen.add(new Line(width));
         }
     }
+    // TODO: preserve content better during shrink
+    // Currently just scrolls excess lines away
+    public void resize(int newWidth, int newHeight) {
+        for (Line line : screen) {
+            line.resize(newWidth);
+        }
+        for (Line line : scrollback) {
+            line.resize(newWidth);
+        }
 
+        if (newHeight > height) {
+            while (screen.size() < newHeight) {
+                screen.add(new Line(newWidth));
+            }
+        } else if (newHeight < height) {
+            while (screen.size() > newHeight) {
+                Line line = screen.remove(0);
+                scrollback.addLast(line);
+
+                while (scrollback.size() > maxScrollback) {
+                    scrollback.removeFirst();
+                }
+            }
+        }
+
+        this.width = newWidth;
+        this.height = newHeight;
+
+        setCursorPosition(cursorRow, cursorCol);
+    }
+
+    public int getScrollbackSize() {
+        return scrollback.size();
+    }
 }
